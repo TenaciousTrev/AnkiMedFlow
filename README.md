@@ -149,11 +149,29 @@ MEDFlow was independently developed with inspiration from the **ZeestMedical** p
 **Artificial Intelligence (AI) tools** were used throughout development to assist with programming, code generation, debugging, error identification, feature implementation, and user experience improvements. These tools supported the development process, helping explore technical solutions and accelerate implementation.
 
 The project's concept, direction, and development were independently guided, with AI technologies serving as supporting tools throughout its creation.
+## 📥 Download & Installation
+
+**Get MEDFlow directly from Anki!**
+
+**Add-on Code:**
+
+```text
+21119510
+```
+
+### How to install
+
+1. Open **Anki** on your computer.
+2. Navigate to **Tools → Add-ons**.
+3. Click **Get Add-ons**.
+4. Enter the code `21119510`.
+5. Click **OK** and restart Anki.
+
+### Compatibility
+
+- **Supported versions:** Anki 2.1.50–2.1.65+
+- **Last updated:** November 17, 2026
 
 ---
 
-**MEDFlow – Think Visually. Learn Actively. Memorize More. 🧠✨**
-Supported Anki versions: 2.1.50-2.1.65+ (Updated 2026-11-17) To download this add-on, please copy and paste the following code into Anki 2.1:
-
-21119510 If you were linked to this page from the internet, please open Anki on your computer, go to the Tools->Add-ons menu item, then click on Get Add-ons and paste in the code.
-formate para eu adicionar para donwload
+⭐ Enjoying MEDFlow? Consider starring this repository and sharing it with other medical students!
