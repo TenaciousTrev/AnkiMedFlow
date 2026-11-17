@@ -153,3 +153,12 @@ The project's concept, direction, and development were independently guided, wit
 ---
 
 **MEDFlow – Think Visually. Learn Actively. Memorize More. 🧠✨**
+Download
+As add-ons are programs downloaded from the internet, they are potentially malicious. You should only download add-ons you trust.
+
+Supported Anki versions:
+2.1.50-2.1.65+ (Updated 2026-11-17)
+To download this add-on, please copy and paste the following code into Anki 2.1:
+
+21119510
+If you were linked to this page from the internet, please open Anki on your computer, go to the Tools->Add-ons menu item, then click on Get Add-ons and paste in the code.
