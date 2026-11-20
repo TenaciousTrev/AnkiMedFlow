@@ -3,14 +3,19 @@
   The JavaScript between SHARED_JS_START / SHARED_JS_END is the single source for the
   rendering code. __init__.py injects it into both the front and the back template in
   place of the /*MF_SHARED*/ token, so there is no duplicated code to keep in sync.
-  Note: never write two opening curly braces in a row inside the JS, Anki would read them as a field.
+  The settings (Tools > MedFlow settings) are injected in place of the /*MF_CONFIG*/ null token.
+  Note: never write two curly braces in a row inside the JS (opening or closing), Anki would read them as a field.
 -->
 
 <!-- SHARED_JS_START -->
-const NODE_W = 190, NODE_H = 58, PAD = 18;
+const CFG = Object.assign({arrow_style: 'straight', card_view: 'path'}, /*MF_CONFIG*/ null);
+const NODE_W = 190, NODE_H = 58, PAD = 18, ELAB_W = 240, ELAB_GAP = 10;
 const hOf = n => Number(n.h) || NODE_H;
 const num = v => Number(v) || 0;
 const escX = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const sid = v => String(v);
+// The front of the asked box or item: [hint] when it has one, as with Anki's own cloze hints, otherwise [...].
+const placeholder = o => { const h = String((o && o.hint) || '').trim(); return '<span class="cloze-placeholder' + (h ? ' cloze-hint' : '') + '">[' + (h ? escX(h) : '...') + ']</span>'; };
 
 // Whitelist sanitizer for the rich text stored in a node.
 function clean(html) {
@@ -45,12 +50,74 @@ const fill = (el, n) => {
   else el.textContent = n.text || '';
 };
 
+// ---- Elaboration lists ("+" items attached to a step or decision box) ----
+const hasElab = n => (n.type || 'box') === 'box' || n.type === 'decision';
+const itemsOf = n => (Array.isArray(n.items) ? n.items : []).filter(it => it && String(it.text || '').trim());
+
+// Which side of its box a list opens on, judged on the whole chart so it stays out of the arrows:
+// the top box opens to the right, the bottom row opens below, every other box opens away from the middle.
+function elabSide(n, nodes, edges) {
+  if (!edges.some(e => sid(e.to) === sid(n.id))) return 'right';
+  const maxTop = Math.max(...nodes.map(m => num(m.y)));
+  if (num(n.y) >= maxTop - 30) return 'below';
+  const x0 = Math.min(...nodes.map(m => num(m.x))), x1 = Math.max(...nodes.map(m => num(m.x) + NODE_W));
+  return num(n.x) + NODE_W / 2 < (x0 + x1) / 2 ? 'left' : 'right';
+}
+function elabPos(n, side) {
+  const x = num(n.x), y = num(n.y);
+  if (side === 'left') return {x: x - ELAB_GAP - ELAB_W, y: y};
+  if (side === 'below') return {x: x + NODE_W / 2 - ELAB_W / 2, y: y + hOf(n) + ELAB_GAP};
+  return {x: x + NODE_W + ELAB_GAP, y: y};
+}
+const ELAB_GLYPH = {right: '▸', left: '◂', below: '▾'};
+
+// ---- Arrows: right-angled (straight) or curved ----
+function orthoPts(p1, p2, s1, s2) {
+  const G = 18, D = {top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0]};
+  const a = {x: p1.x + D[s1][0] * G, y: p1.y + D[s1][1] * G}, b = {x: p2.x + D[s2][0] * G, y: p2.y + D[s2][1] * G};
+  const v1 = s1 === 'top' || s1 === 'bottom', v2 = s2 === 'top' || s2 === 'bottom';
+  let m;
+  if (v1 && v2) { const y = (a.y + b.y) / 2; m = [{x: a.x, y: y}, {x: b.x, y: y}]; }
+  else if (!v1 && !v2) { const x = (a.x + b.x) / 2; m = [{x: x, y: a.y}, {x: x, y: b.y}]; }
+  else if (v1) m = [{x: a.x, y: b.y}];
+  else m = [{x: b.x, y: a.y}];
+  const out = [], same = (u, v) => Math.abs(u - v) < 0.5;
+  [p1, a, ...m, b, p2].forEach(p => {
+    const l = out[out.length - 1];
+    if (l && same(l.x, p.x) && same(l.y, p.y)) return;
+    out.push({x: p.x, y: p.y});
+    while (out.length >= 3) {
+      const q = out[out.length - 3], r = out[out.length - 2], s = out[out.length - 1];
+      if ((same(q.x, r.x) && same(r.x, s.x)) || (same(q.y, r.y) && same(r.y, s.y))) out.splice(out.length - 2, 1); else break;
+    }
+  });
+  return out;
+}
+function orthoMid(pts) {
+  const segs = [];
+  for (let i = 0; i < pts.length - 1; i++) segs.push([pts[i], pts[i + 1]]);
+  const len = s => Math.abs(s[1].x - s[0].x) + Math.abs(s[1].y - s[0].y);
+  const pool = segs.length > 2 ? segs.slice(1, -1) : segs;
+  const best = pool.reduce((a, s) => (len(s) > len(a) ? s : a), pool[0]);
+  return {x: (best[0].x + best[1].x) / 2, y: (best[0].y + best[1].y) / 2};
+}
+function edgeGeom(p, q, sa, sb) {
+  if (CFG.arrow_style === 'curved') {
+    const bend = Math.max(35, Math.min(110, Math.hypot(q.x - p.x, q.y - p.y) * .35));
+    const v = {top: [0, -bend], bottom: [0, bend], left: [-bend, 0], right: [bend, 0]};
+    const c1 = {x: p.x + v[sa][0], y: p.y + v[sa][1]}, c2 = {x: q.x + v[sb][0], y: q.y + v[sb][1]};
+    return {d: 'M' + p.x + ' ' + p.y + ' C' + c1.x + ' ' + c1.y + ',' + c2.x + ' ' + c2.y + ',' + q.x + ' ' + q.y,
+            mid: {x: (p.x + 3 * c1.x + 3 * c2.x + q.x) / 8, y: (p.y + 3 * c1.y + 3 * c2.y + q.y) / 8} };
+  }
+  const pts = orthoPts(p, q, sa, sb);
+  return {d: 'M' + pts.map(o => o.x + ' ' + o.y).join(' L'), mid: orthoMid(pts)};
+}
+
 const lblCtx = document.createElement('canvas').getContext('2d');
-const edgeLabel = (p, c1, c2, q, text) => {
-  const x = (p.x + 3 * c1.x + 3 * c2.x + q.x) / 8, y = (p.y + 3 * c1.y + 3 * c2.y + q.y) / 8;
+const edgeLabel = (m, text) => {
   lblCtx.font = '600 12px Arial';
   const w = lblCtx.measureText(text).width + 18;
-  return '<g class="elabel"><rect x="' + (x - w / 2) + '" y="' + (y - 11) + '" width="' + w + '" height="22" rx="11"/><text x="' + x + '" y="' + y + '" text-anchor="middle" dominant-baseline="central">' + escX(text) + '</text></g>';
+  return '<g class="elabel"><rect x="' + (m.x - w / 2) + '" y="' + (m.y - 11) + '" width="' + w + '" height="22" rx="11"/><text x="' + m.x + '" y="' + m.y + '" text-anchor="middle" dominant-baseline="central">' + escX(text) + '</text></g>';
 };
 
 // Which cloze is being asked? Works with gaps in the numbering (c1, c3, c7...) and with 10+ clozes.
@@ -66,7 +133,9 @@ function findActive(tracker, nodes, front) {
   if (!front) return 0;
   // Fallback for very old Anki: the asked cloze is the one whose marker is missing from the front text.
   const txt = tracker.textContent;
-  const ids = [...new Set(nodes.map(n => num(n.cloze)).filter(c => c > 0))].sort((a, b) => a - b);
+  const all = [];
+  nodes.forEach(n => { all.push(num(n.cloze)); itemsOf(n).forEach(it => all.push(num(it.cloze))); });
+  const ids = [...new Set(all.filter(c => c > 0))].sort((a, b) => a - b);
   return ids.find(c => !new RegExp('CLOZEID_' + c + '(?!\\d)').test(txt)) || 0;
 }
 
@@ -84,7 +153,8 @@ function initView(disp, stage, s0, x0, y0, raw, active) {
   const centerOnActive = () => {
     const els = [...stage.querySelectorAll('[data-active="1"]')]; let a = 1e9, b = 1e9, c = -1e9, d = -1e9;
     if (!els.length) { a = 0; b = 0; c = stage.offsetWidth; d = stage.offsetHeight; }
-    els.forEach(el => { a = Math.min(a, el.offsetLeft); b = Math.min(b, el.offsetTop); c = Math.max(c, el.offsetLeft + el.offsetWidth); d = Math.max(d, el.offsetTop + el.offsetHeight); });
+    const inner = stage.firstElementChild, ox = inner ? inner.offsetLeft : 0, oy = inner ? inner.offsetTop : 0;
+    els.forEach(el => { const l = el.offsetLeft + ox, t = el.offsetTop + oy; a = Math.min(a, l); b = Math.min(b, t); c = Math.max(c, l + el.offsetWidth); d = Math.max(d, t + el.offsetHeight); });
     tx = disp.clientWidth / 2 - s * (a + c) / 2; ty = disp.clientHeight / 2 - s * (b + d) / 2;
   };
   const st = readState();
@@ -125,6 +195,35 @@ function initView(disp, stage, s0, x0, y0, raw, active) {
   disp.addEventListener('click', e => { if (suppress) { e.stopPropagation(); e.preventDefault(); } }, true);
 }
 
+// A box's list as a translucent panel. `ask` = {index, front} when one of its items is the asked cloze:
+// the items above it are shown, the asked one is hidden on the front, and the ones below stay hidden.
+function buildPanel(n, side, ask) {
+  const p = document.createElement('div');
+  p.className = 'elab-vis elab-' + side;
+  const pos = elabPos(n, side);
+  p.style.left = pos.x + 'px'; p.style.top = pos.y + 'px'; p.style.width = ELAB_W + 'px';
+  itemsOf(n).forEach((it, i) => {
+    const row = document.createElement('div'); row.className = 'elab-row'; row.dataset.cloze = num(it.cloze);
+    const plus = document.createElement('span'); plus.className = 'elab-plus'; plus.textContent = '+';
+    const t = document.createElement('span'); t.className = 'elab-text'; t.textContent = it.text;
+    row.appendChild(plus); row.appendChild(t);
+    if (ask) {
+      if (i > ask.index) row.classList.add('elab-later');
+      else if (i === ask.index) {
+        row.dataset.active = '1';
+        if (ask.front) {
+          row.classList.add('elab-asked');
+          t.innerHTML = placeholder(it);
+          row.title = 'Click to reveal';
+          row.addEventListener('click', () => { row.classList.remove('elab-asked'); row.classList.add('elab-answer'); t.textContent = it.text; row.title = ''; });
+        } else row.classList.add('elab-answer');
+      }
+    }
+    p.appendChild(row);
+  });
+  return p;
+}
+
 function run(mode) {
   const front = mode === 'front';
   const disp = document.getElementById('algorithm-display'), rawEl = document.getElementById('json-data');
@@ -132,73 +231,117 @@ function run(mode) {
   const raw = rawEl.innerHTML.replace(/<br\s*\/?\s*>/gi, '').replace(/&nbsp;/g, ' ').replace(/<[^>]*>/g, '').trim();
   if (!raw || raw.startsWith('(') || raw.includes('Algorithm_JSON')) { disp.innerHTML = '<div class="flow-empty">Flowchart preview</div>'; return; }
   try {
-    const data = JSON.parse(raw), nodes = data.nodes || [], edges = data.edges || [];
-    if (!nodes.length) { disp.innerHTML = '<div class="flow-empty">Empty flowchart</div>'; return; }
-    const active = findActive(document.getElementById('cloze-tracker'), nodes, front);
+    const data = JSON.parse(raw), all = data.nodes || [], allEdges = data.edges || [];
+    const tt = document.getElementById('flow-title');
+    if (tt) { const t = String(data.title || '').trim(); tt.textContent = t; tt.style.display = t ? '' : 'none'; }
+    if (!all.length) { disp.innerHTML = '<div class="flow-empty">Empty flowchart</div>'; return; }
+    const active = findActive(document.getElementById('cloze-tracker'), all, front);
 
-    const width = disp.clientWidth || 760;
-    const minX = Math.min(...nodes.map(n => num(n.x))), minY = Math.min(...nodes.map(n => num(n.y)));
-    const maxX = Math.max(...nodes.map(n => num(n.x) + NODE_W)), maxY = Math.max(...nodes.map(n => num(n.y) + hOf(n)));
-    const contentW = maxX - minX, contentH = maxY - minY;
-    const dtop = disp.getBoundingClientRect().top + (window.pageYOffset || 0), H = Math.max(260, window.innerHeight - dtop - 14);
-    disp.style.height = H + 'px';
-    const scale = Math.min(1.5, (width - PAD * 2) / Math.max(contentW, 1), (H - PAD * 2) / Math.max(contentH, 1));
-    const left = (width - contentW * scale) / 2, top = Math.max(PAD, (disp.clientHeight - contentH * scale) / 2);
+    // What is being asked: one or more boxes sharing the cloze number, or one item of a box's list.
+    let targets = active > 0 ? all.filter(n => num(n.cloze) === active) : [], ask = null;
+    if (active > 0 && !targets.length) {
+      for (const n of all) {
+        const i = itemsOf(n).findIndex(it => num(it.cloze) === active);
+        if (i >= 0) { ask = {node: n, index: i, front: front}; targets = [n]; break; }
+      }
+    }
+    const targetIds = new Set(targets.map(n => sid(n.id)));
 
-    const marker = 'arrow-' + mode + '-' + Math.random().toString(36).slice(2);
-    let svg = '<svg class="flow-lines" width="' + contentW + '" height="' + contentH + '" viewBox="0 0 ' + contentW + ' ' + contentH + '"><defs><marker id="' + marker + '" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0 0 L10 3.5 L0 7 Z" fill="#8793ad"/></marker></defs>';
+    // Which boxes to draw: the asked boxes and every box above them, or the whole chart.
+    let nodes = all;
+    if (CFG.card_view !== 'full' && targets.length) {
+      const keep = new Set(), stack = [...targetIds];
+      while (stack.length) {
+        const id = stack.pop(); if (keep.has(id)) continue; keep.add(id);
+        allEdges.forEach(e => { if (sid(e.to) === id) stack.push(sid(e.from)); });
+      }
+      nodes = all.filter(n => keep.has(sid(n.id)));
+    }
+    const shown = new Set(nodes.map(n => sid(n.id)));
+    const edges = allEdges.filter(e => shown.has(sid(e.from)) && shown.has(sid(e.to)));
+
+    const byId = id => all.find(n => sid(n.id) === sid(id));
     const center = n => ({x: num(n.x) + NODE_W / 2, y: num(n.y) + hOf(n) / 2});
     const side = (a, b) => { const p = center(a), q = center(b), dx = q.x - p.x, dy = q.y - p.y; return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'bottom' : 'top'); };
-    const point = (n, s) => { const x = num(n.x) - minX, y = num(n.y) - minY; return s === 'top' ? {x: x + NODE_W / 2, y: y} : s === 'bottom' ? {x: x + NODE_W / 2, y: y + hOf(n)} : s === 'left' ? {x: x, y: y + hOf(n) / 2} : {x: x + NODE_W, y: y + hOf(n) / 2}; };
-    let labels = '';
-    edges.forEach(e => {
-      const a = nodes.find(n => String(n.id) === String(e.from)), b = nodes.find(n => String(n.id) === String(e.to));
-      if (!a || !b) return;
-      const sa = e.fromSide || side(a, b), sb = e.toSide || side(b, a), p = point(a, sa), q = point(b, sb);
-      const bend = Math.max(35, Math.min(110, Math.hypot(q.x - p.x, q.y - p.y) * .35));
-      const v = {top: [0, -bend], bottom: [0, bend], left: [-bend, 0], right: [bend, 0]};
-      const c1 = {x: p.x + v[sa][0], y: p.y + v[sa][1]}, c2 = {x: q.x + v[sb][0], y: q.y + v[sb][1]};
-      svg += '<path d="M' + p.x + ' ' + p.y + ' C' + c1.x + ' ' + c1.y + ',' + c2.x + ' ' + c2.y + ',' + q.x + ' ' + q.y + '" marker-end="url(#' + marker + ')"/>';
-      if (e.label) labels += edgeLabel(p, c1, c2, q, e.label);
-    });
-    svg += labels + '</svg>';
+    const point = (n, s) => { const x = num(n.x), y = num(n.y); return s === 'top' ? {x: x + NODE_W / 2, y: y} : s === 'bottom' ? {x: x + NODE_W / 2, y: y + hOf(n)} : s === 'left' ? {x: x, y: y + hOf(n) / 2} : {x: x + NODE_W, y: y + hOf(n) / 2}; };
 
     const stage = document.createElement('div'); stage.className = 'flow-stage';
-    stage.style.width = contentW + 'px'; stage.style.height = contentH + 'px';
-    stage.style.left = left + 'px'; stage.style.top = top + 'px'; stage.style.transform = 'scale(' + scale + ')';
-    stage.innerHTML = svg;
+    const inner = document.createElement('div'); inner.className = 'flow-inner'; stage.appendChild(inner);
+
+    const marker = 'arrow-' + mode + '-' + Math.random().toString(36).slice(2);
+    const svgW = Math.max(...nodes.map(n => num(n.x) + NODE_W)) + 60, svgH = Math.max(...nodes.map(n => num(n.y) + hOf(n))) + 60;
+    let svg = '<svg class="flow-lines" width="' + svgW + '" height="' + svgH + '" style="width:' + svgW + 'px;height:' + svgH + 'px;right:auto;bottom:auto"><defs><marker id="' + marker + '" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0 0 L10 3.5 L0 7 Z" fill="#8793ad"/></marker></defs>';
+    let labels = '';
+    edges.forEach(e => {
+      const a = byId(e.from), b = byId(e.to);
+      if (!a || !b) return;
+      const sa = e.fromSide || side(a, b), sb = e.toSide || side(b, a), g = edgeGeom(point(a, sa), point(b, sb), sa, sb);
+      svg += '<path d="' + g.d + '" marker-end="url(#' + marker + ')"/>';
+      if (e.label) labels += edgeLabel(g.mid, e.label);
+    });
+    inner.innerHTML = svg + labels + '</svg>';
+
+    const panels = {};
+    const togglePanel = (n, btn, sd) => {
+      const id = sid(n.id);
+      const g = btn.querySelector('.elab-glyph');
+      if (panels[id]) { panels[id].remove(); delete panels[id]; g.textContent = '▸'; return; }
+      panels[id] = buildPanel(n, sd, null); inner.appendChild(panels[id]); g.textContent = ELAB_GLYPH[sd];
+    };
 
     nodes.forEach(n => {
       const el = document.createElement('div');
       el.className = 'node-vis type-' + (n.type || 'box');
       if (Number(n.h) > 54) el.style.minHeight = n.h + 'px';
-      el.style.left = (num(n.x) - minX) + 'px'; el.style.top = (num(n.y) - minY) + 'px';
+      el.style.left = num(n.x) + 'px'; el.style.top = num(n.y) + 'px';
       fill(el, n);
-      const isActive = active > 0 && num(n.cloze) === active;
-      if (isActive) el.dataset.active = '1';
-      if (front) {
-        if (isActive) {
-          el.classList.add('cloze-focus');
-          el.innerHTML = '<span class="cloze-placeholder">[...]</span>';
-          el.title = 'Click to reveal';
-          el.addEventListener('click', () => { el.classList.remove('cloze-focus'); fill(el, n); });
-        }
-      } else if (num(n.cloze) > 0) {
-        el.classList.add('cloze-answer');
+      const isTarget = targetIds.has(sid(n.id)), boxAsked = isTarget && !ask;
+      if (isTarget) el.dataset.active = '1';
+      if (boxAsked && front) {
+        el.classList.add('cloze-focus');
+        el.innerHTML = placeholder(n);
+        el.title = 'Click to reveal';
+        el.addEventListener('click', () => { el.classList.remove('cloze-focus'); fill(el, n); });
+      } else if (isTarget) el.classList.add(boxAsked ? 'cloze-answer' : 'cloze-context');
+      // The list button: hidden on the front of the box's own card, so its items can't give the box away.
+      if (hasElab(n) && itemsOf(n).length && !(boxAsked && front)) {
+        const sd = elabSide(n, all, allEdges), open = ask && sid(ask.node.id) === sid(n.id);
+        // The label shows inline beside the arrow on hover (no floating tooltip that could cover text).
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'elab-btn'; btn.setAttribute('aria-label', 'Elaboration');
+        btn.innerHTML = '<span class="elab-tip">Elaboration</span><span class="elab-glyph">' + (open ? ELAB_GLYPH[sd] : '▸') + '</span>';
+        if (!open) btn.addEventListener('click', ev => { ev.stopPropagation(); togglePanel(n, btn, sd); });
+        el.appendChild(btn);
       }
-      stage.appendChild(el);
+      inner.appendChild(el);
     });
+    if (ask) { const p = buildPanel(ask.node, elabSide(ask.node, all, allEdges), ask); p.dataset.active = '1'; inner.appendChild(p); }
+
+    // Measure everything drawn (boxes and the open list) and fit it to the card.
+    disp.appendChild(stage);
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    inner.querySelectorAll('.node-vis,.elab-vis').forEach(el => {
+      x0 = Math.min(x0, el.offsetLeft); y0 = Math.min(y0, el.offsetTop);
+      x1 = Math.max(x1, el.offsetLeft + el.offsetWidth); y1 = Math.max(y1, el.offsetTop + el.offsetHeight);
+    });
+    const contentW = x1 - x0, contentH = y1 - y0;
+    inner.style.left = -x0 + 'px'; inner.style.top = -y0 + 'px';
+    stage.style.width = contentW + 'px'; stage.style.height = contentH + 'px';
+
+    const width = disp.clientWidth || 760;
+    const dtop = disp.getBoundingClientRect().top + (window.pageYOffset || 0), H = Math.max(260, window.innerHeight - dtop - 14);
+    disp.style.height = H + 'px';
+    const scale = Math.min(1.5, (width - PAD * 2) / Math.max(contentW, 1), (H - PAD * 2) / Math.max(contentH, 1));
+    const left = (width - contentW * scale) / 2, top = Math.max(PAD, (disp.clientHeight - contentH * scale) / 2);
 
     if (!front) {
       const ex = document.getElementById('node-extra');
-      if (ex && active > 0) nodes.filter(n => num(n.cloze) === active && ((n.extra && String(n.extra).trim()) || (n.images && n.images.length))).forEach(n => {
+      if (ex && active > 0 && !ask) targets.filter(n => (n.extra && String(n.extra).trim()) || (n.images && n.images.length)).forEach(n => {
         const p = document.createElement('div'); p.className = 'flow-node-extra-item';
         if (n.extra && String(n.extra).trim()) { const t = document.createElement('div'); t.textContent = n.extra; p.appendChild(t); }
         (n.images || []).forEach(f => { const im = document.createElement('img'); im.className = 'flow-node-extra-img'; im.src = f; p.appendChild(im); });
         ex.appendChild(p);
       });
     }
-    disp.appendChild(stage);
     initView(disp, stage, scale, left, top, raw, active);
   } catch (e) { disp.innerHTML = '<div class="flow-empty">Could not load the flowchart</div>'; console.error(e); }
 }
@@ -206,6 +349,7 @@ function run(mode) {
 
 <!-- FRONT_TEMPLATE_START -->
 <div id="cloze-tracker" style="display:none">{{cloze:Text}}</div>
+<div id="flow-title" class="flow-title" style="display:none"></div>
 <div id="algorithm-display" class="flowchart-display"></div>
 <div id="json-data" style="display:none">{{Algorithm_JSON}}</div>
 <script>
@@ -218,6 +362,7 @@ run('front');
 
 <!-- BACK_TEMPLATE_START -->
 <div id="cloze-tracker" style="display:none">{{cloze:Text}}</div>
+<div id="flow-title" class="flow-title" style="display:none"></div>
 <div id="algorithm-display" class="flowchart-display"></div>
 <div id="json-data" style="display:none">{{Algorithm_JSON}}</div>
 <hr><div id="node-extra" class="flow-node-extra"></div><div class="flow-extra">{{Extra}}</div>

@@ -17,8 +17,9 @@ button{border:1px solid var(--line);background:#fff;color:#46516a;border-radius:
 button:hover{background:#f5f6ff;border-color:#cbd2f5;color:#465bd0;box-shadow:0 3px 10px rgba(70,91,208,.08)}
 button:active{transform:translateY(1px)}
 button:focus-visible,input:focus-visible{outline:3px solid rgba(100,120,232,.25);outline-offset:2px}
-#toolbar{height:66px;min-height:66px;background:var(--panel);backdrop-filter:blur(18px);border-bottom:1px solid var(--line);padding:0 20px;display:flex;gap:16px;align-items:center;z-index:100;box-shadow:0 2px 12px rgba(31,42,68,.035)}
-.brand{display:flex;align-items:center;gap:10px;min-width:205px}
+#toolbar{height:66px;min-height:66px;background:var(--panel);backdrop-filter:blur(18px);border-bottom:1px solid var(--line);padding:0 16px;display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;align-items:center;z-index:100;box-shadow:0 2px 12px rgba(31,42,68,.035)}
+.brand{display:flex;align-items:center;gap:10px}
+#toolbar>*{flex-shrink:0}
 .brand-mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,#7d8cf2,#586bd8);display:grid;place-items:center;color:white;font-size:17px;font-weight:800;box-shadow:0 5px 12px rgba(91,108,218,.25)}
 .brand-copy{display:flex;flex-direction:column;gap:1px}.brand-copy strong{font-size:13px;letter-spacing:.01em}.brand-copy span{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.07em;text-transform:uppercase}
 .toolbar-divider{height:27px;width:1px;background:var(--line);flex:none}
@@ -40,22 +41,65 @@ button:focus-visible,input:focus-visible{outline:3px solid rgba(100,120,232,.25)
 #zoomer{position:relative;width:3000px;height:3000px}
 #canvas{position:absolute!important;left:0;top:0;transform-origin:0 0}
 #viewport.panning,#viewport.panning *{cursor:grabbing!important;user-select:none}
-#zoom-controls{position:absolute;left:18px;bottom:18px;z-index:50;display:flex;gap:2px;padding:5px;background:var(--panel);backdrop-filter:blur(16px);border:1px solid rgba(225,230,241,.9);border-radius:12px;box-shadow:var(--shadow)}
-#zoom-controls button{min-width:34px;height:30px;padding:0 8px;font-size:15px;border-color:transparent;background:transparent;color:#68738a}
+#zoom-controls{display:flex;align-items:center;gap:2px}
+#zoom-controls button{min-width:30px;height:30px;padding:0 7px;font-size:15px}
 #zoom-controls button:hover{background:var(--accent-soft);color:#5268d8}
 #zoom-label{font-size:11px!important;font-weight:700;min-width:48px!important}
-#format-bar{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:5px;padding:6px 8px;background:var(--panel);backdrop-filter:blur(16px);border:1px solid rgba(225,230,241,.9);border-radius:13px;box-shadow:var(--shadow);transition:opacity .15s ease}
+#format-bar{display:flex;align-items:center;gap:4px;transition:opacity .15s ease}
+#fmt-font{width:104px}
+/* Toolbar layout (Settings): "scroll" = one row that scrolls sideways (the rules above),
+   "wrap" = the top bar grows extra rows, "float" = format and zoom bars float over the canvas as originally designed. */
+body[data-tb="wrap"] #toolbar{height:auto;flex-wrap:wrap;overflow:visible;padding:10px 16px;row-gap:8px}
+body[data-tb="float"] #toolbar{overflow:visible}
+body[data-tb="float"] .tb-div-fmt,body[data-tb="float"] .tb-div-zoom{display:none}
+body[data-tb="float"] .brand-copy span{display:inline}
+body[data-tb="float"] #zoom-controls{position:absolute;left:18px;bottom:18px;z-index:50;display:flex;gap:2px;padding:5px;background:var(--panel);backdrop-filter:blur(16px);border:1px solid rgba(225,230,241,.9);border-radius:12px;box-shadow:var(--shadow)}
+body[data-tb="float"] #zoom-controls button{min-width:34px;height:30px;padding:0 8px;font-size:15px;border-color:transparent;background:transparent;color:#68738a}
+body[data-tb="float"] #format-bar{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:5px;padding:6px 8px;background:var(--panel);backdrop-filter:blur(16px);border:1px solid rgba(225,230,241,.9);border-radius:13px;box-shadow:var(--shadow);transition:opacity .15s ease}
+html[data-theme="dark"] body[data-tb="float"] #zoom-controls,html[data-theme="dark"] body[data-tb="float"] #format-bar{border-color:#2c3447}
+html[data-theme="dark"] body[data-tb="float"] #zoom-controls button{color:#a4aec6;background:transparent}
+
+.brand-copy span{display:none}
 #format-bar.idle{opacity:.45;pointer-events:none}
 #format-bar select{height:30px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);font-size:12px;padding:0 6px;cursor:pointer}
 #format-bar button{min-width:30px;height:30px;padding:0 7px;font-size:13px}
 #format-bar button.on{background:var(--accent-soft);color:#5268d8;border-color:#dfe3ff}
 #format-bar .fsep{width:1px;height:20px;background:var(--line);margin:0 2px}
+#mf-title{width:180px;max-width:22vw;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13px;font-weight:650;color:var(--text);background:#fafbfe}
+#mf-title::placeholder{color:#a3acbf;font-weight:550}
+/* Elaboration lists: the ▸ button in a box's corner and the translucent "+" panel it opens */
+#nodes .node.type-box,#nodes .node.type-decision{padding-bottom:18px}
+.elab-btn{position:absolute!important;right:4px;bottom:2px;height:14px!important;min-width:14px;width:auto!important;padding:0 2px!important;display:flex;align-items:center;gap:4px;border:none!important;border-radius:4px!important;background:transparent!important;color:#111!important;font-size:10px!important;line-height:14px;box-shadow:none!important;z-index:26;cursor:pointer;white-space:nowrap}
+.elab-btn:hover{background:rgba(0,0,0,.06)!important}
+.node.type-decision .elab-btn{right:26px}
+.elab-btn .elab-tip{display:none;font-size:10px;font-weight:650;color:#5b6785}
+.elab-btn:hover .elab-tip{display:inline}
+.elab-panel{position:absolute;width:240px;padding:7px 10px;background:rgba(255,255,255,.78);border:1.5px solid #9fb0f0;border-radius:11px;box-shadow:0 6px 18px rgba(37,49,77,.09);z-index:15;cursor:default}
+.elab-row{display:flex;gap:8px;align-items:flex-start;padding:2px 0}
+.elab-plus{flex:none;width:10px;color:#5268d8;font-weight:800;font-size:13px;line-height:1.45}
+.elab-text{flex:1;min-width:0;min-height:19px;outline:none;font-size:13px;line-height:1.45;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere;border-bottom:1px dashed transparent;cursor:text}
+.elab-text:hover{border-bottom-color:#dce2ed}
+.elab-text:focus{border-bottom-color:#9fb0f0}
+.elab-text:empty::before{content:attr(data-ph);color:#a3acbf}
+.elab-cz{flex:none;font-size:10px;font-weight:800;color:#946b18;background:#fff1c9;border:1px solid #f0d995;border-radius:10px;padding:0 5px;line-height:15px;margin-top:2px}
+html[data-theme="dark"] #mf-title{background:#1d2231;color:var(--text)}
+html[data-theme="dark"] .elab-btn{color:#e4e8f2!important}
+html[data-theme="dark"] .elab-btn:hover{background:rgba(255,255,255,.1)!important}
+html[data-theme="dark"] .elab-btn .elab-tip{color:#a4aec6}
+html[data-theme="dark"] .elab-panel{background:rgba(34,42,60,.8);border-color:#5865a6;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+html[data-theme="dark"] .elab-plus{color:#a9b6ff}
+html[data-theme="dark"] .elab-text:hover{border-bottom-color:#36405a}
+html[data-theme="dark"] .elab-cz{background:#4a3c18;color:#f0c864;border-color:#7a6226}
 .node-content ul,.node-content ol{text-align:left;margin:2px 0;padding-left:22px}
 .node-content div,.node-content p{margin:0}
 #canvas-tools{position:absolute;left:18px;top:18px;z-index:50;display:flex;flex-direction:column;gap:7px;padding:9px;background:var(--panel);backdrop-filter:blur(16px);border:1px solid rgba(225,230,241,.9);border-radius:15px;box-shadow:var(--shadow)}
 #canvas-tools button{width:42px;height:40px;padding:0;display:grid;place-items:center;font-size:17px;border-color:transparent;background:transparent;color:#68738a}
 #canvas-tools button:hover{background:var(--accent-soft);color:#5268d8}
 #canvas-tools button.tool-active{background:var(--accent-soft);color:#5268d8;border-color:#dfe3ff}
+#canvas-tools #notes-menu{position:absolute;left:62px;display:none;flex-direction:column;gap:3px;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:60}
+#canvas-tools #notes-menu.open{display:flex}
+#canvas-tools #notes-menu button{width:auto;min-width:150px;height:32px;padding:0 10px;display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:12px;font-weight:650;color:var(--text)}
+#canvas-tools #notes-menu button span{font-size:10px;font-weight:600;color:var(--muted)}
 #canvas-tools .tool-separator{height:1px;background:var(--line);margin:2px 4px}
 #canvas-tools button.clear-tool:hover{background:#fff0f2;color:var(--danger)}
 .tool-tip{position:absolute;left:53px;white-space:nowrap;background:#252d40;color:white;padding:6px 9px;border-radius:7px;font-size:10px;opacity:0;pointer-events:none;transform:translateX(-4px);transition:.15s ease}
@@ -79,9 +123,23 @@ button:focus-visible,input:focus-visible{outline:3px solid rgba(100,120,232,.25)
 .node-content{width:100%;text-align:center;outline:none;pointer-events:none;line-height:1.45;font-size:13px;font-weight:550;overflow-wrap:anywhere}
 .node.editing .node-content{pointer-events:auto;cursor:text;user-select:text;background:rgba(255,255,255,.65);border-radius:5px}
 .node.editing{cursor:text!important;border-color:#5b9b83!important;box-shadow:0 0 0 4px rgba(91,155,131,.14)!important}
-.node-extra-badge{position:absolute;top:-9px;left:-9px;background:#e6f4ec;color:#2f7a52;padding:3px 7px;border:1px solid #b9dcc8;font-size:10px;border-radius:20px;font-weight:800;box-shadow:0 2px 5px rgba(30,70,50,.08)}
+/* "extra" marker: bottom-left, inside the strip under the text; click opens Box extra */
+.node-extra-badge{position:absolute;left:6px;bottom:2px;background:#e6f4ec;color:#2f7a52;padding:0 6px;border:1px solid #b9dcc8;font-size:10px;line-height:13px;border-radius:20px;font-weight:800;cursor:pointer;z-index:26}
+.node.type-decision .node-extra-badge{left:26px}
+/* Hint bubble: top-left, on the box's border (above the text). Shows the hint; click to edit it in place. */
+.node-hint{position:absolute;top:-10px;left:-9px;max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#e6f4ec;color:#2f7a52;padding:2px 8px;border:1px solid #b9dcc8;font-size:10px;line-height:14px;font-weight:700;font-style:italic;border-radius:20px;cursor:pointer;z-index:27;box-shadow:0 2px 5px rgba(30,70,50,.08)}
+.node-hint:hover{border-color:#5b9b83}
+.node-hint.empty{display:none;font-style:normal;background:#fff;color:#8a94a8;border-style:dashed;border-color:#cfd6e4;box-shadow:none}
+.node:hover .node-hint.empty,.node.selected .node-hint.empty{display:block}
+.node-hint.editing{display:block;max-width:none;padding:0;background:#fff;border-color:#5b9b83;border-style:solid;cursor:text}
+.node-hint input{width:180px;border:none;outline:none;background:transparent;font-family:inherit;font-size:11px;font-weight:600;line-height:16px;padding:1px 9px;color:var(--text)}
+#nodes .node.type-info{padding-bottom:18px}
 #extraBox p{font-size:12px;color:#6f7a90;line-height:1.5;margin:0}
-#extraText{height:150px;text-align:left}
+#extraText{height:150px;text-align:left;margin-top:6px}
+.xlabel{display:block;text-align:left;font-size:12px;font-weight:750;color:var(--text);margin:14px 0 0}
+.xlabel span{font-weight:550;color:var(--muted)}
+#boxHint{width:100%;margin:6px 0 0;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#fafbfe;color:var(--text);font-size:13px}
+html[data-theme="dark"] #boxHint{background:#1a1f2d}
 #extraImgs{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:0 0 10px}
 #extraImgs:empty{display:none}
 .xi{position:relative}.xi img{height:68px;max-width:130px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block}
@@ -102,7 +160,7 @@ svg line{stroke:#aab4c8;stroke-width:2;stroke-linecap:round;opacity:.9}
 .elabel text{fill:#5b6785;font:600 12px Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;text-anchor:middle;dominant-baseline:central;user-select:none}
 .elabel.sel rect{stroke:#6478e8}
 textarea{width:100%;height:110px;margin:12px 0;border:1px solid var(--line);border-radius:10px;padding:10px;resize:vertical;color:var(--text);background:#fafbfe}
-@media(max-width:760px){#toolbar{padding:0 10px;gap:8px;height:auto;min-height:60px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}.brand{min-width:auto}.brand-copy span{display:none}.toolbar-divider{display:none}#toolbar .toolbar-group{gap:4px}#toolbar button{padding:7px 8px;font-size:11px}.toolbar-spacer{display:none}#canvas-tools{left:10px;top:10px}#workspace-hint{display:none}}
+@media(max-width:760px){#toolbar{padding:0 10px;gap:8px}.brand{min-width:auto}.brand-copy span{display:none}.toolbar-divider{display:none}#toolbar .toolbar-group{gap:4px}#toolbar button{padding:7px 8px;font-size:11px}.toolbar-spacer{display:none}#canvas-tools{left:10px;top:10px}#workspace-hint{display:none}}
 
 /* Dark theme (set from Anki's night mode) */
 html[data-theme="dark"]:root{--bg:#161a24;--panel:rgba(30,36,50,.92);--line:#2c3447;--text:#e4e8f2;--muted:#8e9ab3;--accent:#7b8cf0;--accent-soft:#2a3150;--danger:#f08a98;--shadow:0 10px 30px rgba(0,0,0,.4);color-scheme:dark}
@@ -119,8 +177,8 @@ html[data-theme="dark"] #c{background:#1d2231;color:var(--text)}
 html[data-theme="dark"] #workspace-shell{background:#161a24}
 html[data-theme="dark"] #viewport{background-color:#161a24;scrollbar-color:#3a4358 transparent}
 html[data-theme="dark"] #canvas{background-image:radial-gradient(#2a3144 .85px,transparent .85px)}
-html[data-theme="dark"] #zoom-controls,html[data-theme="dark"] #canvas-tools{border-color:#2c3447}
-html[data-theme="dark"] #zoom-controls button,html[data-theme="dark"] #canvas-tools button{color:#a4aec6;background:transparent}
+html[data-theme="dark"] #canvas-tools{border-color:#2c3447}
+html[data-theme="dark"] #canvas-tools button{color:#a4aec6;background:transparent}
 html[data-theme="dark"] #zoom-controls button:hover,html[data-theme="dark"] #canvas-tools button:hover,html[data-theme="dark"] #canvas-tools button.tool-active{background:var(--accent-soft);color:#b8c3ff}
 html[data-theme="dark"] #canvas-tools button.clear-tool:hover{background:#3a2229;color:#f08a98}
 html[data-theme="dark"] .tool-tip{background:#e4e8f2;color:#161a24}
@@ -135,7 +193,9 @@ html[data-theme="dark"] .linking-source{background:#2b2447!important;border-colo
 html[data-theme="dark"] .node.type-decision.editing{--db:#5b9b83}
 html[data-theme="dark"] .type-info{background:#1f2c45;border-color:#35507c}
 html[data-theme="dark"] .node.editing .node-content{background:rgba(255,255,255,.08)}
-html[data-theme="dark"] .node-extra-badge{background:#1f3a2d;color:#7fd1a2;border-color:#2f6048}
+html[data-theme="dark"] .node-extra-badge,html[data-theme="dark"] .node-hint{background:#1f3a2d;color:#7fd1a2;border-color:#2f6048}
+html[data-theme="dark"] .node-hint.empty{background:#222a3c;color:#8e9ab3;border-color:#47528a}
+html[data-theme="dark"] .node-hint.editing{background:#1a1f2d;border-color:#5b9b83}
 html[data-theme="dark"] .node-cloze{background:#4a3c18;color:#f0c864;border-color:#7a6226}
 html[data-theme="dark"] .connection-point{border-color:#222a3c!important}
 html[data-theme="dark"] svg line{stroke:#6c7896}
@@ -147,7 +207,6 @@ html[data-theme="dark"] .elabel.sel rect{stroke:#7b8cf0}
 html[data-theme="dark"] #saveBox p,html[data-theme="dark"] #extraBox p{color:#9aa5bd}
 html[data-theme="dark"] textarea{background:#1a1f2d;color:var(--text)}
 html[data-theme="dark"] .xi b{background:#232a3b}
-html[data-theme="dark"] #format-bar{border-color:#2c3447}
 html[data-theme="dark"] #format-bar select{background:#232a3b;color:#c7cee0;border-color:#2c3447}
 html[data-theme="dark"] #format-bar button.on{background:#2a3150;color:#b8c3ff;border-color:#47528a}
 </style>
@@ -156,12 +215,30 @@ html[data-theme="dark"] #format-bar button.on{background:#2a3150;color:#b8c3ff;b
 <header id="toolbar">
   <div class="brand"><div class="brand-mark">M</div><div class="brand-copy"><strong>MedFlow</strong><span>Flowchart editor</span></div></div>
   <div class="toolbar-divider"></div>
+  <input id="mf-title" type="text" maxlength="200" placeholder="Algorithm title" title="Title shown on every card of this flowchart" oninput="mfTitle=this.value">
+  <div class="toolbar-divider"></div>
   <div class="toolbar-group">
     <label class="cloze-control" for="c">CLOZE # <input id="c" type="number" value="0"></label>
     <button class="cloze-btn" onclick="applyCloze(0)" title="Apply current number (Ctrl+Shift+Alt+C)">Apply</button>
     <button class="cloze-btn" onclick="applyCloze(1)" title="Increment and apply (Ctrl+Shift+C)">+1</button>
   </div>
+  <div class="toolbar-divider tb-div-fmt"></div>
+  <div id="format-bar" class="idle" onmousedown="if(!/^(SELECT|OPTION)$/.test(event.target.tagName))event.preventDefault()">
+    <select id="fmt-size" title="Font size" onchange="fmtSize(this.value)"></select>
+    <select id="fmt-font" title="Font" onchange="fmtFont(this.value)"></select>
+    <div class="fsep"></div>
+    <button id="fmt-b" onclick="fmt('bold')" title="Bold (Ctrl+B)"><b>B</b></button>
+    <button id="fmt-i" onclick="fmt('italic')" title="Italic (Ctrl+I)"><i>I</i></button>
+    <button id="fmt-u" onclick="fmt('underline')" title="Underline (Ctrl+U)"><u>U</u></button>
+    <div class="fsep"></div>
+    <button id="fmt-ul" onclick="fmt('insertUnorderedList')" title="Bullet list">•≡</button>
+    <button id="fmt-ol" onclick="fmt('insertOrderedList')" title="Numbered list">1.≡</button>
+    <div class="fsep"></div>
+    <button onclick="fmtClear()" title="Clear formatting">Tx</button>
+  </div>
   <div class="toolbar-spacer"></div>
+  <div id="zoom-controls"><button onclick="zoomBy(1/1.2)" title="Zoom out (Ctrl+-)">−</button><button id="zoom-label" onclick="setZoom(1)" title="Reset zoom (Ctrl+0)">100%</button><button onclick="zoomBy(1.2)" title="Zoom in (Ctrl+=)">+</button><button onclick="fitView()" title="Fit everything (Ctrl+9)">⤢</button></div>
+  <div class="toolbar-divider tb-div-zoom"></div>
   <div class="toolbar-group">
     <button class="import" onclick="showImport()" title="Import JSON code">⇧ Import</button>
     <button class="clear" onclick="clearAll()" title="Clear all (Ctrl+Shift+Del)">Clear all</button>
@@ -180,29 +257,16 @@ html[data-theme="dark"] #format-bar button.on{background:#2a3150;color:#b8c3ff;b
     <div class="tool-separator"></div>
     <button onclick="editText()" class="edit-text" title="Edit text (Ctrl+Shift+E)">✎<span class="tool-tip">Edit text</span></button>
     <button id="btn-link" onclick="toggleLink()" title="Link mode (Ctrl+L): pick a parent box, then click its children">↗<span class="tool-tip">Link: parent → children</span></button>
-    <button onclick="editExtra()" title="Box extra (Ctrl+Shift+X)">≡<span class="tool-tip">Box extra</span></button>
+    <button id="btn-notes" onclick="toggleNotesMenu()" title="Hint and extra" aria-haspopup="menu">≡<span class="tool-tip">Hint and extra</span></button>
+    <div id="notes-menu" role="menu"><button role="menuitem" onclick="pickNotes('hint')">Hint<span>Ctrl+Shift+H</span></button><button role="menuitem" onclick="pickNotes('extra')">Extra<span>Ctrl+Shift+X</span></button></div>
     <button onclick="labelSelected()" title="Arrow label (double-click an arrow)">ab<span class="tool-tip">Arrow label</span></button>
     <button onclick="del()" class="clear-tool" title="Delete selected node">⌫<span class="tool-tip">Delete selected</span></button>
   </nav>
-  <div id="format-bar" class="idle" onmousedown="if(!/^(SELECT|OPTION)$/.test(event.target.tagName))event.preventDefault()">
-    <select id="fmt-size" title="Font size" onchange="fmtSize(this.value)"></select>
-    <select id="fmt-font" title="Font" onchange="fmtFont(this.value)"></select>
-    <div class="fsep"></div>
-    <button id="fmt-b" onclick="fmt('bold')" title="Bold (Ctrl+B)"><b>B</b></button>
-    <button id="fmt-i" onclick="fmt('italic')" title="Italic (Ctrl+I)"><i>I</i></button>
-    <button id="fmt-u" onclick="fmt('underline')" title="Underline (Ctrl+U)"><u>U</u></button>
-    <div class="fsep"></div>
-    <button id="fmt-ul" onclick="fmt('insertUnorderedList')" title="Bullet list">•≡</button>
-    <button id="fmt-ol" onclick="fmt('insertOrderedList')" title="Numbered list">1.≡</button>
-    <div class="fsep"></div>
-    <button onclick="fmtClear()" title="Clear formatting">Tx</button>
-  </div>
   <div id="workspace-hint">Double-click to edit · Drag a blue point to connect · Ctrl+A / B / C to add nodes · Click an arrow, then drag its ends to reconnect · Ctrl+wheel to zoom · drag the background to pan</div>
-  <div id="zoom-controls"><button onclick="zoomBy(1/1.2)" title="Zoom out (Ctrl+-)">−</button><button id="zoom-label" onclick="setZoom(1)" title="Reset zoom (Ctrl+0)">100%</button><button onclick="zoomBy(1.2)" title="Zoom in (Ctrl+=)">+</button><button onclick="fitView()" title="Fit everything (Ctrl+9)">⤢</button></div>
 </div>
 <div id="saveModal"><div id="saveBox"><h3>Data copied</h3><p>1. Return to Anki.<br>2. Paste into <b>Algorithm_JSON</b>.<br>3. Click <b>Sync</b> to update your cards.</p><button onclick="document.getElementById('saveModal').style.display='none'">Close</button></div></div>
 <div id="labelModal"><div id="labelBox"><h3>Arrow label</h3><p>Text shown on the arrow. Leave empty to remove it.</p><input id="labelInput" maxlength="80" placeholder="e.g. Yes, No, > 5 cm..." onkeydown="if(event.key==='Enter'){saveLabel()}else if(event.key==='Escape'){closeLabel()}"><br><button onclick="saveLabel()" class="import">Save</button> <button onclick="closeLabel()">Cancel</button></div></div>
-<div id="extraModal"><div id="extraBox"><h3>Box extra</h3><p id="extraHint"></p><textarea id="extraText" placeholder="Extra shown on the back of the card when this box's cloze is asked... (Ctrl+V pastes an image)" onkeydown="if(event.key==='Escape'){closeExtra()}else if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){saveExtra()}"></textarea><div id="extraImgBox" style="display:none"><div id="extraImgs"></div><button onclick="addExtraImage()">+ Add image</button><br></div><br><button onclick="saveExtra()" class="import">Save</button> <button onclick="closeExtra()">Cancel</button></div></div>
+<div id="extraModal"><div id="extraBox"><h3>Hint and extra</h3><p id="extraHint"></p><label class="xlabel" for="boxHint">Hint <span>shown as [hint] instead of [...] when this box is asked</span></label><input id="boxHint" maxlength="120" placeholder="e.g. setting of care" onkeydown="if(event.key==='Escape'){closeExtra()}else if(event.key==='Enter'){saveExtra()}"><label class="xlabel" for="extraText">Extra <span>shown on the back when this box is asked</span></label><textarea id="extraText" placeholder="Notes, pearls... (Ctrl+V pastes an image)" onkeydown="if(event.key==='Escape'){closeExtra()}else if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){saveExtra()}"></textarea><div id="extraImgBox" style="display:none"><div id="extraImgs"></div><button onclick="addExtraImage()">+ Add image</button><br></div><br><button onclick="saveExtra()" class="import">Save</button> <button onclick="closeExtra()">Cancel</button></div></div>
 <div id="importModal"><div id="importBox"><h3>Import flowchart</h3><textarea id="importText" placeholder="Paste JSON data here..."></textarea><br><button onclick="doImport()" class="import">Import</button> <button onclick="document.getElementById('importModal').style.display='none'">Cancel</button></div></div>
 <script>
 let data={};
@@ -211,9 +275,27 @@ try {
   if(payload) data=JSON.parse(payload);
 } catch(e){ console.error('Could not read flowchart data:',e); }
 let ns=Array.isArray(data.nodes)?data.nodes:[], es=Array.isArray(data.edges)?data.edges:[], sel=null;
+let mfTitle=typeof data.title==='string'?data.title:'';
 let linkMode=false, linkSource=null, dragState=null, rafId=0;
 const NODE_W=190, NODE_MIN_H=54;
-window.addEventListener('load',()=>render());
+// Settings (Tools > MedFlow settings). Anki sets window.MF_CFG when it opens the editor.
+function mfCfg(){return Object.assign({arrow_style:'straight',hint_bubbles:true,extra_markers:true,toolbar_layout:'scroll'},window.MF_CFG||{})}
+// Puts the format and zoom bars where the toolbar_layout setting says: in the top bar (scroll / wrap) or floating over the canvas (float).
+let tbAnchors=null;
+function applyToolbarLayout(){
+  const mode=['scroll','wrap','float'].includes(mfCfg().toolbar_layout)?mfCfg().toolbar_layout:'scroll';
+  const f=document.getElementById('format-bar'),z=document.getElementById('zoom-controls'),shell=document.getElementById('workspace-shell');
+  if(!f||!z||!shell)return;
+  if(!tbAnchors)tbAnchors={f:document.querySelector('.tb-div-fmt'),z:document.querySelector('#toolbar .toolbar-spacer')};
+  if(mode==='float'){shell.appendChild(f);shell.appendChild(z)}else{tbAnchors.f.after(f);tbAnchors.z.after(z)}
+  document.body.dataset.tb=mode;
+}
+window.addEventListener('load',()=>{applyToolbarLayout();loadedChart();render()});
+// Called after the chart data (ns, es, mfTitle) is (re)loaded: fills the title box and opens the lists that have items.
+function loadedChart(){
+  const t=document.getElementById('mf-title');if(t)t.value=mfTitle||'';
+  openPanels=new Set(ns.filter(n=>hasElab(n)&&(n.items||[]).some(it=>it&&String(it.text||'').trim())).map(n=>String(n.id)));
+}
 
 function nodeEl(id){return document.getElementById('node-'+id)}
 function nodeSize(n){
@@ -253,6 +335,38 @@ function curve(p1,p2,s1,s2){
 function curveMid(p1,p2,s1,s2){
   const {c1,c2}=curveCtl(p1,p2,s1,s2);
   return {x:(p1.x+3*c1.x+3*c2.x+p2.x)/8,y:(p1.y+3*c1.y+3*c2.y+p2.y)/8};
+}
+// Right-angled routing: a short stub straight out of each box, then only horizontal and vertical segments.
+// Siblings below one parent share the same horizontal run, like a printed algorithm.
+function orthoPts(p1,p2,s1,s2){
+  const G=18,D={top:[0,-1],bottom:[0,1],left:[-1,0],right:[1,0]};
+  const a={x:p1.x+D[s1][0]*G,y:p1.y+D[s1][1]*G},b={x:p2.x+D[s2][0]*G,y:p2.y+D[s2][1]*G};
+  const v1=s1==='top'||s1==='bottom',v2=s2==='top'||s2==='bottom';
+  let m;
+  if(v1&&v2){const y=(a.y+b.y)/2;m=[{x:a.x,y},{x:b.x,y}]}
+  else if(!v1&&!v2){const x=(a.x+b.x)/2;m=[{x,y:a.y},{x,y:b.y}]}
+  else if(v1)m=[{x:a.x,y:b.y}];
+  else m=[{x:b.x,y:a.y}];
+  const out=[],same=(u,v)=>Math.abs(u-v)<.5;
+  [p1,a,...m,b,p2].forEach(p=>{
+    const l=out[out.length-1];if(l&&same(l.x,p.x)&&same(l.y,p.y))return;
+    out.push({x:p.x,y:p.y});
+    while(out.length>=3){const q=out[out.length-3],r=out[out.length-2],s=out[out.length-1];
+      if((same(q.x,r.x)&&same(r.x,s.x))||(same(q.y,r.y)&&same(r.y,s.y)))out.splice(out.length-2,1);else break}
+  });
+  return out;
+}
+function orthoMid(pts){
+  const segs=[];for(let i=0;i<pts.length-1;i++)segs.push([pts[i],pts[i+1]]);
+  const len=s=>Math.abs(s[1].x-s[0].x)+Math.abs(s[1].y-s[0].y);
+  const pool=segs.length>2?segs.slice(1,-1):segs,best=pool.reduce((a,s)=>len(s)>len(a)?s:a,pool[0]);
+  return {x:(best[0].x+best[1].x)/2,y:(best[0].y+best[1].y)/2};
+}
+// Path and label position of an arrow, in the style chosen in the settings.
+function edgeGeom(p1,p2,s1,s2){
+  if(mfCfg().arrow_style==='curved')return {d:curve(p1,p2,s1,s2),mid:curveMid(p1,p2,s1,s2)};
+  const pts=orthoPts(p1,p2,s1,s2);
+  return {d:'M '+pts.map(p=>p.x+' '+p.y).join(' L '),mid:orthoMid(pts)};
 }
 const escXml=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 let selEdge=null,labelTarget=null;
@@ -308,10 +422,27 @@ function render(){
     d.style.left=n.x+'px';d.style.top=n.y+'px';
     const t=document.createElement('div');t.className='node-content';t.contentEditable='false';setNodeContent(t,n);d.appendChild(t);
     if(Number(n.cloze)>0){const b=document.createElement('div');b.textContent='c'+n.cloze;b.className='node-cloze';d.appendChild(b)}
-    if((n.extra&&String(n.extra).trim())||(n.images&&n.images.length)){const x=document.createElement('div');x.textContent='extra';x.className='node-extra-badge';x.title=n.extra||'';d.appendChild(x)}
+    {const hasX=(n.extra&&String(n.extra).trim())||(n.images&&n.images.length),hasH=n.hint&&String(n.hint).trim();
+     const stop=e=>e.stopPropagation();
+     // Hint bubble: the hint itself (or "+ hint" on hover / selection); click to edit it right there.
+     const cfg=mfCfg();
+     if(cfg.hint_bubbles!==false){const hb=document.createElement('div');hb.className='node-hint'+(hasH?'':' empty');hb.textContent=hasH?n.hint:'+ hint';
+     hb.addEventListener('pointerdown',stop);hb.addEventListener('dblclick',stop);
+     hb.addEventListener('click',e=>{e.stopPropagation();editHintInline(n,hb)});d.appendChild(hb)}
+     if(hasX&&cfg.extra_markers!==false){const x=document.createElement('div');x.textContent='extra';x.className='node-extra-badge';
+       x.addEventListener('pointerdown',stop);x.addEventListener('dblclick',stop);
+       x.addEventListener('click',e=>{e.stopPropagation();sel=n.id;updateSelection();editExtra()});d.appendChild(x)}}
     ['top','right','bottom','left'].forEach(side=>{
       const h=document.createElement('button');h.type='button';h.className='connection-point point-'+side;h.dataset.side=side;h.dataset.node=n.id;h.title='Drag to connect';h.setAttribute('aria-label','Connect from '+side);d.appendChild(h);
     });
+    if(hasElab(n)){
+      const b=document.createElement('button');b.type='button';b.className='elab-btn';b.dataset.node=n.id;b.setAttribute('aria-label','Elaboration');
+      b.innerHTML='<span class="elab-tip">Elaboration</span><span class="elab-glyph">▸</span>';
+      b.addEventListener('pointerdown',e=>e.stopPropagation());
+      b.addEventListener('dblclick',e=>e.stopPropagation());
+      b.addEventListener('click',e=>{e.stopPropagation();togglePanel(n)});
+      d.appendChild(b);
+    }
     d.addEventListener('pointerdown',e=>onNodePointerDown(e,n,d));
     d.addEventListener('dblclick',e=>{e.stopPropagation();enterEditMode(d,n.id)});
     t.addEventListener('keydown',e=>{
@@ -326,8 +457,123 @@ function render(){
     t.addEventListener('paste',e=>{e.preventDefault();const txt=(e.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,txt)});
     nd.appendChild(d);
   });
+  renderPanels();
   renderLinesOnly();
   updateToolState();
+}
+
+// ---- Elaboration lists ----
+// Each step / decision box can carry an ordered list (n.items = [{id, text, cloze}]). Every item with text
+// becomes its own cloze card, reviewed in list order. An item keeps its cloze number for good, so rewording
+// or reordering the list keeps each item's review history.
+let openPanels=new Set();
+const ELAB_W=240,ELAB_GAP=10;
+function hasElab(n){return (n.type||'box')==='box'||n.type==='decision'}
+// "answer::hint", as in Anki's own {{c1::answer::hint}}: the first :: separates the hint.
+function splitHint(v){const i=v.indexOf('::');if(i<0)return {text:v};const h=v.slice(i+2).trim();return h?{text:v.slice(0,i).trimEnd(),hint:h}:{text:v.slice(0,i).trimEnd()}}
+function itemLine(it){return (it.text||'')+(it.hint?'::'+it.hint:'')}
+function usedClozes(){
+  const s=new Set();
+  ns.forEach(n=>{if(Number(n.cloze)>0)s.add(Number(n.cloze));(n.items||[]).forEach(it=>{if(it&&Number(it.cloze)>0)s.add(Number(it.cloze))})});
+  return s;
+}
+function nextCloze(){return Math.max(0,...usedClozes())+1}
+// Which side a list opens on, judged on the whole chart so the panels stay clear of the arrows:
+// the top box opens to the right, the bottom row opens below, every other box opens away from the middle.
+function elabSide(n){
+  if(!es.some(e=>String(e.to)===String(n.id)))return 'right';
+  const maxTop=Math.max(...ns.map(m=>m.y));
+  if(n.y>=maxTop-30)return 'below';
+  let x0=1e9,x1=-1e9;ns.forEach(m=>{x0=Math.min(x0,m.x);x1=Math.max(x1,m.x+nodeSize(m).w)});
+  return n.x+nodeSize(n).w/2<(x0+x1)/2?'left':'right';
+}
+const ELAB_GLYPH={right:'▸',left:'◂',below:'▾'};
+function togglePanel(n){
+  const id=String(n.id);
+  if(openPanels.has(id))openPanels.delete(id);
+  else{openPanels.add(id);if(!(n.items||[]).length)requestAnimationFrame(()=>focusItem(n,0))}
+  renderPanels();renderLinesOnly();
+}
+function renderPanels(){
+  const nd=document.getElementById('nodes');
+  nd.querySelectorAll('.elab-panel').forEach(p=>p.remove());
+  ns.forEach(n=>{
+    if(!hasElab(n)||!openPanels.has(String(n.id)))return;
+    const p=document.createElement('div');p.className='elab-panel';p.id='elab-'+n.id;
+    p.addEventListener('pointerdown',e=>e.stopPropagation());
+    p.addEventListener('dblclick',e=>e.stopPropagation());
+    fillPanel(p,n);nd.appendChild(p);
+  });
+  placePanels();
+}
+function fillPanel(p,n){
+  p.innerHTML='';
+  const items=(n.items||[]).length?n.items:[{id:'new',text:''}];
+  items.forEach((it,i)=>{
+    const row=document.createElement('div');row.className='elab-row';
+    const plus=document.createElement('span');plus.className='elab-plus';plus.textContent='+';
+    const t=document.createElement('div');t.className='elab-text';t.contentEditable='true';t.spellcheck=true;
+    t.dataset.ph=i===0?'Type an item (answer::hint), Enter for the next':'';t.textContent=itemLine(it);
+    const cz=document.createElement('span');cz.className='elab-cz';
+    const showCz=()=>{cz.textContent=Number(it.cloze)>0?'c'+it.cloze:'';cz.style.display=Number(it.cloze)>0?'':'none'};showCz();
+    row.appendChild(plus);row.appendChild(t);row.appendChild(cz);p.appendChild(row);
+    const commit=()=>{
+      const parts=splitHint(t.innerText.replace(/\s*\n\s*/g,' ')),v=parts.text;
+      if(!n.items)n.items=[];
+      if(!n.items.includes(it)){if(!v.trim())return;it.id=Date.now()+Math.floor(Math.random()*1000);n.items.push(it)}
+      it.text=v;if(parts.hint)it.hint=parts.hint;else delete it.hint;
+      if(v.trim()&&!(Number(it.cloze)>0)){it.cloze=nextCloze();showCz()}
+    };
+    t.addEventListener('input',()=>{commit();placePanels()});
+    t.addEventListener('paste',e=>{
+      e.preventDefault();
+      const lines=(e.clipboardData||window.clipboardData).getData('text/plain').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      if(!lines.length)return;
+      document.execCommand('insertText',false,lines[0]);commit();
+      if(lines.length>1){const at=n.items.indexOf(it);lines.slice(1).forEach((s,k)=>n.items.splice(at+1+k,0,Object.assign({id:Date.now()+k+1,cloze:0},splitHint(s))));
+        n.items.slice(at+1,at+lines.length).forEach(x=>{x.cloze=nextCloze()});fillPanel(p,n);placePanels();focusItem(n,at+lines.length-1)}
+    });
+    t.addEventListener('keydown',e=>{
+      const at=(n.items||[]).indexOf(it);
+      if(e.key==='Enter'&&!e.shiftKey){
+        e.preventDefault();
+        if(!t.textContent.trim()){ // Enter on an empty line ends the list
+          if(at>=0&&n.items.length>1){n.items.splice(at,1);fillPanel(p,n);placePanels()}else t.blur();
+          return;
+        }
+        commit();if(at<0)return;
+        n.items.splice(at+1,0,{id:Date.now(),text:'',cloze:0});fillPanel(p,n);placePanels();focusItem(n,at+1);
+      }else if(e.key==='Backspace'&&!t.textContent&&at>=0&&n.items.length>1){
+        e.preventDefault();n.items.splice(at,1);fillPanel(p,n);placePanels();focusItem(n,Math.max(0,at-1));
+      }else if(e.key==='ArrowUp'&&at>0){e.preventDefault();focusItem(n,at-1)}
+      else if(e.key==='ArrowDown'&&at>=0&&at<n.items.length-1){e.preventDefault();focusItem(n,at+1)}
+      else if(e.key==='Escape'){e.preventDefault();t.blur()}
+    });
+    // Empty lines left behind are dropped once the cursor leaves the panel.
+    t.addEventListener('blur',()=>setTimeout(()=>{
+      if(!p.isConnected||p.contains(document.activeElement)||!n.items)return;
+      const kept=n.items.filter(x=>String(x.text||'').trim());
+      if(kept.length!==n.items.length){n.items=kept;fillPanel(p,n);placePanels()}
+    },0));
+  });
+}
+function focusItem(n,i){
+  const p=document.getElementById('elab-'+n.id);if(!p)return;
+  const t=p.querySelectorAll('.elab-text')[i];if(!t)return;
+  t.focus();const r=document.createRange();r.selectNodeContents(t);r.collapse(false);const s=window.getSelection();s.removeAllRanges();s.addRange(r);
+}
+function placePanels(){
+  ns.forEach(n=>{
+    const el=nodeEl(n.id),b=el&&el.querySelector('.elab-glyph');
+    const open=openPanels.has(String(n.id)),side=hasElab(n)?elabSide(n):'right';
+    if(b)b.textContent=open?ELAB_GLYPH[side]:'▸';
+    const p=document.getElementById('elab-'+n.id);if(!p)return;
+    const z=nodeSize(n);let x,y;
+    if(side==='left'){x=n.x-ELAB_GAP-ELAB_W;y=n.y}
+    else if(side==='below'){x=n.x+z.w/2-ELAB_W/2;y=n.y+z.h+ELAB_GAP}
+    else{x=n.x+z.w+ELAB_GAP;y=n.y}
+    p.style.left=x+'px';p.style.top=y+'px';
+  });
 }
 function enterEditMode(el,id){
   sel=id;const current=nodeEl(id)||el;if(!current)return;
@@ -431,15 +677,15 @@ function renderLinesOnly(){
       if(rc.end==='to'){if(m){p2=m.p;st=m.side}else{p2=cur;st=nearestSide(fake,a)}}
       else{if(m){p1=m.p;sf=m.side}else{p1=cur;sf=nearestSide(fake,b)}}
     }
-    const d=curve(p1,p2,sf,st),on=selEdge===i;
+    const geom=edgeGeom(p1,p2,sf,st),d=geom.d,on=selEdge===i;
     html+=`<path data-i="${i}" d="${d}" fill="none" stroke="transparent" stroke-width="18" style="pointer-events:stroke;cursor:pointer"/>`;
-    html+=`<path d="${d}" fill="none" stroke="${on?'#6478e8':'#9ba8c1'}" stroke-width="${on?3:2.2}" stroke-linecap="round" marker-end="url(#ah)"/>`;
+    html+=`<path d="${d}" fill="none" stroke="${on?'#6478e8':'#9ba8c1'}" stroke-width="${on?3:2.2}" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ah)"/>`;
     if(on){
       html2+=`<circle data-i="${i}" data-end="from" cx="${p1.x}" cy="${p1.y}" r="7" fill="#fff" stroke="#6478e8" stroke-width="2.5" style="pointer-events:all;cursor:grab"><title>Drag to move the start of this arrow</title></circle>`;
       html2+=`<circle data-i="${i}" data-end="to" cx="${p2.x}" cy="${p2.y}" r="7" fill="#fff" stroke="#6478e8" stroke-width="2.5" style="pointer-events:all;cursor:grab"><title>Drag to move the end of this arrow</title></circle>`;
     }
     if(hint)html+=`<circle cx="${hint.p.x}" cy="${hint.p.y}" r="11" fill="rgba(63,157,110,.18)" stroke="#3f9d6e" stroke-width="2.5" style="pointer-events:none"/>`;
-    if(e.label){const m=curveMid(p1,p2,sf,st);labels+=`<g class="elabel${on?' sel':''}" data-i="${i}"><rect rx="10"/><text x="${m.x}" y="${m.y}">${escXml(e.label)}</text></g>`}
+    if(e.label){const m=geom.mid;labels+=`<g class="elabel${on?' sel':''}" data-i="${i}"><rect rx="10"/><text x="${m.x}" y="${m.y}">${escXml(e.label)}</text></g>`}
   });
   html+=labels;
   if(dragState?.kind==='connect'){
@@ -448,7 +694,7 @@ function renderLinesOnly(){
       const p1=sidePoint(a,dragState.fromSide),m=dragState.magnet;
       const p2=m?m.p:canvasPoint({clientX:dragState.x,clientY:dragState.y});
       const s2=m?m.side:nearestSide(a,{x:p2.x-95,y:p2.y-27});
-      html+=`<path d="${curve(p1,p2,dragState.fromSide,s2)}" fill="none" stroke="${m?'#3f9d6e':'#687be5'}" stroke-width="2.5" ${m?'':'stroke-dasharray="6 5"'}/>`;
+      html+=`<path d="${edgeGeom(p1,p2,dragState.fromSide,s2).d}" fill="none" stroke="${m?'#3f9d6e':'#687be5'}" stroke-width="2.5" ${m?'':'stroke-dasharray="6 5"'}/>`;
       if(m)html+=`<circle cx="${m.p.x}" cy="${m.p.y}" r="10" fill="rgba(63,157,110,.18)" stroke="#3f9d6e" stroke-width="2.5"/>`;
     }
   }
@@ -458,6 +704,7 @@ function renderLinesOnly(){
     r.setAttribute('x',bb.x-9);r.setAttribute('y',bb.y-3);r.setAttribute('width',bb.width+18);r.setAttribute('height',bb.height+6);
   });
   const sd2=document.getElementById('svg2');if(sd2)sd2.innerHTML=html2;
+  placePanels();
   // The connection points where the selected arrow starts/ends can't start new arrows (use the arrow's own handles instead).
   document.querySelectorAll('.connection-point.cp-blocked').forEach(x=>x.classList.remove('cp-blocked'));
   if(selEdge!==null&&es[selEdge]){
@@ -492,16 +739,18 @@ function updateToolState(){updateFmtState();const b=document.getElementById('btn
 function add(t){
   const id=Date.now()+Math.floor(Math.random()*1000);const vp0=document.getElementById('viewport');let x=vp0.scrollLeft/zoom+250/zoom,y=vp0.scrollTop/zoom+220/zoom;
   if(sel){const p=ns.find(n=>String(n.id)===String(sel));if(p){x=p.x;y=p.y+145}}
-  ns.push({id,x,y,type:t,text:'',cloze:0});sel=id;render();
+  // Step and decision boxes get the next free cloze number straight away (set it to 0 to leave a box untested).
+  const cz=t==='info'?0:nextCloze();if(cz)document.getElementById('c').value=cz;
+  ns.push({id,x,y,type:t,text:'',cloze:cz});sel=id;render();
   requestAnimationFrame(()=>{const el=nodeEl(id);if(el)enterEditMode(el,id)});
 }
 function toggleLink(){linkMode=!linkMode;linkSource=null;render();}
 function applyCloze(inc){if(!sel)return;const inp=document.getElementById('c');let v=(parseInt(inp.value)||0)+inc;if(inc===1)inp.value=v;const n=ns.find(x=>String(x.id)===String(sel));if(n){n.cloze=Math.max(0,v);render()}}
 function clearAll(){if(confirm('Delete all?')){ns=[];es=[];sel=null;render()}}
-function exportData(){const j=JSON.stringify({nodes:ns,edges:es});navigator.clipboard.writeText(j).then(()=>{document.getElementById('saveModal').style.display='flex'}).catch(()=>{const ta=document.createElement('textarea');ta.value=j;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();document.getElementById('saveModal').style.display='flex'})}
+function exportData(){const j=JSON.stringify({title:mfTitle,nodes:ns,edges:es});navigator.clipboard.writeText(j).then(()=>{document.getElementById('saveModal').style.display='flex'}).catch(()=>{const ta=document.createElement('textarea');ta.value=j;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();document.getElementById('saveModal').style.display='flex'})}
 function del(){if(selEdge!==null&&es[selEdge]){es.splice(selEdge,1);selEdge=null;renderLinesOnly();return}if(sel!==null){selEdge=null;ns=ns.filter(n=>String(n.id)!==String(sel));es=es.filter(e=>String(e.from)!==String(sel)&&String(e.to)!==String(sel));sel=null;render()}}
 function showImport(){document.getElementById('importModal').style.display='flex'}
-function doImport(){try{const d=JSON.parse(document.getElementById('importText').value);if(!Array.isArray(d.nodes))throw Error();ns=d.nodes;es=Array.isArray(d.edges)?d.edges:[];sel=null;render();document.getElementById('importModal').style.display='none'}catch(e){alert('Invalid JSON')}}
+function doImport(){try{const d=JSON.parse(document.getElementById('importText').value);if(!Array.isArray(d.nodes))throw Error();ns=d.nodes;es=Array.isArray(d.edges)?d.edges:[];if(typeof d.title==='string')mfTitle=d.title;sel=null;loadedChart();render();document.getElementById('importModal').style.display='none'}catch(e){alert('Invalid JSON')}}
 function zfClean(html){
   const tpl=document.createElement('template');tpl.innerHTML=String(html||'');
   const OK={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,SPAN:1,BR:1,DIV:1,P:1},DROP={SCRIPT:1,STYLE:1,IFRAME:1,OBJECT:1,EMBED:1,LINK:1,META:1,SVG:1,IMG:1};
@@ -640,6 +889,7 @@ function fitView(){
   if(!ns.length){setZoom(1);vp.scrollLeft=0;vp.scrollTop=0;return}
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   ns.forEach(n=>{const z=nodeSize(n);x0=Math.min(x0,n.x);y0=Math.min(y0,n.y);x1=Math.max(x1,n.x+z.w);y1=Math.max(y1,n.y+z.h)});
+  document.querySelectorAll('.elab-panel').forEach(p=>{const l=p.offsetLeft,t=p.offsetTop;x0=Math.min(x0,l);y0=Math.min(y0,t);x1=Math.max(x1,l+p.offsetWidth);y1=Math.max(y1,t+p.offsetHeight)});
   const pad=70,w=x1-x0+pad*2,h=y1-y0+pad*2;
   setZoom(Math.min(vp.clientWidth/w,vp.clientHeight/h,1.5));
   vp.scrollLeft=(x0-pad)*zoom-(vp.clientWidth-w*zoom)/2;
@@ -703,31 +953,56 @@ document.addEventListener('keydown',e=>{
   if(((e.ctrlKey||e.metaKey)&&k==='v')||(e.shiftKey&&e.key==='Insert')){if(tryPasteImage())e.preventDefault()}
 },true);
 document.addEventListener('paste',e=>{if(tryPasteImage())e.preventDefault()},true);
-function editExtra(){
+function editExtra(focus){
   if(sel===null){alert('Select a box first.');return}
   const n=ns.find(x=>String(x.id)===String(sel));if(!n)return;
   extraTarget=n.id;extraImgs=(n.images||[]).slice();
   document.getElementById('extraImgBox').style.display=hasBridge()?'block':'none';renderExtraImgs();
   document.getElementById('extraText').value=n.extra||'';
+  document.getElementById('boxHint').value=n.hint||'';
   document.getElementById('extraHint').textContent=Number(n.cloze)>0
-    ?'Shown on the back of the card when this box (c'+n.cloze+') is the asked cloze.'
-    :'This box has no cloze number yet. Its extra only appears once it has one.';
+    ?'Box c'+n.cloze+(n.text?': '+String(n.text).slice(0,60):'')
+    :'This box has no cloze number yet. Its hint and extra only appear once it has one.';
   document.getElementById('extraModal').style.display='flex';
-  setTimeout(()=>document.getElementById('extraText').focus(),0);
+  setTimeout(()=>document.getElementById(focus==='hint'?'boxHint':'extraText').focus(),0);
 }
+function toggleNotesMenu(force){
+  const m=document.getElementById('notes-menu'),b=document.getElementById('btn-notes');
+  const open=force===undefined?!m.classList.contains('open'):force;
+  if(open)m.style.top=b.offsetTop+'px';
+  m.classList.toggle('open',open);b.classList.toggle('tool-active',open);
+}
+function pickNotes(which){toggleNotesMenu(false);editExtra(which)}
+document.addEventListener('pointerdown',e=>{const m=document.getElementById('notes-menu');if(m&&m.classList.contains('open')&&!e.target.closest('#notes-menu,#btn-notes'))toggleNotesMenu(false)},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const m=document.getElementById('notes-menu');if(m&&m.classList.contains('open'))toggleNotesMenu(false)}});
 function saveExtra(){
   const n=ns.find(x=>String(x.id)===String(extraTarget));
-  if(n){const v=document.getElementById('extraText').value.trim();if(v)n.extra=v;else delete n.extra;if(extraImgs.length)n.images=extraImgs.slice();else delete n.images}
+  if(n){const v=document.getElementById('extraText').value.trim();if(v)n.extra=v;else delete n.extra;
+    const h=document.getElementById('boxHint').value.trim();if(h)n.hint=h;else delete n.hint;if(extraImgs.length)n.images=extraImgs.slice();else delete n.images}
   closeExtra();render();
 }
 function closeExtra(){document.getElementById('extraModal').style.display='none';extraTarget=null}
+// Edit a box's hint in place: Enter or clicking away saves, Esc cancels, an empty hint removes it.
+function editHintInline(n,hb){
+  if(hb.classList.contains('editing'))return;
+  hb.classList.add('editing');hb.textContent='';
+  const inp=document.createElement('input');inp.value=n.hint||'';inp.maxLength=120;inp.placeholder='Hint, shown as [hint]';inp.spellcheck=true;
+  hb.appendChild(inp);inp.focus();inp.select();
+  let done=false;
+  const finish=save=>{if(done)return;done=true;
+    if(save){const v=inp.value.trim();if(v)n.hint=v;else delete n.hint}
+    render()};
+  inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();finish(true)}else if(e.key==='Escape'){e.preventDefault();finish(false)}});
+  inp.addEventListener('blur',()=>finish(true));
+}
 function editText(){if(sel!==null){const el=nodeEl(sel);if(el)enterEditMode(el,sel)}}
 document.addEventListener('keydown',e=>{
   const c=e.ctrlKey||e.metaKey, active=document.activeElement;
   const typing=active&&(active.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(active.tagName));
   if(c&&!typing&&!e.shiftKey&&!e.altKey){const k=e.key.toLowerCase();if(k==='a'){e.preventDefault();add('box');return}if(k==='b'){e.preventDefault();add('decision');return}if(k==='c'){e.preventDefault();add('info');return}}
   if(c&&e.shiftKey&&e.key.toLowerCase()==='e'){e.preventDefault();editText()}
-  if(c&&e.shiftKey&&e.key.toLowerCase()==='x'){e.preventDefault();editExtra()}
+  if(c&&e.shiftKey&&e.key.toLowerCase()==='x'){e.preventDefault();editExtra('extra')}
+  if(c&&e.shiftKey&&!e.altKey&&e.key.toLowerCase()==='h'){e.preventDefault();editExtra('hint')}
   if(c&&!e.altKey&&!e.shiftKey&&extraTarget===null){
     if(e.key==='='||e.key==='+'){e.preventDefault();zoomBy(1.2)}
     else if(e.key==='-'){e.preventDefault();zoomBy(1/1.2)}

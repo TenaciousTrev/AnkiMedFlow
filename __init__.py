@@ -7,6 +7,8 @@ import time
 from aqt import mw
 from aqt.qt import *
 from aqt.utils import showInfo, tooltip, askUser
+
+from . import numbering
 from anki.hooks import addHook
 
 try:
@@ -33,6 +35,38 @@ MODEL_NAME = "MedFlow"
 EDITOR_FILE = "medflow_editor.html"
 BRIDGE_PREFIX = "__medflow__:"
 SHARED_JS_TOKEN = "/*MF_SHARED*/"
+CONFIG_TOKEN = "/*MF_CONFIG*/ null"
+
+# ==========================================
+# PART 1b: SETTINGS (config.json, edited through Tools > MedFlow settings)
+# ==========================================
+DEFAULT_CONFIG = {"arrow_style": "straight", "card_view": "path", "hint_bubbles": True, "extra_markers": True,
+                  "toolbar_layout": "scroll"}
+CONFIG_CHOICES = {"arrow_style": ("straight", "curved"), "card_view": ("path", "full"),
+                  "hint_bubbles": (True, False), "extra_markers": (True, False),
+                  "toolbar_layout": ("scroll", "wrap", "float")}
+
+
+def _addon_module():
+    return mw.addonManager.addonFromModule(__name__)
+
+
+def get_config():
+    try:
+        conf = mw.addonManager.getConfig(_addon_module()) or {}
+    except Exception:
+        conf = {}
+    out = dict(DEFAULT_CONFIG)
+    for key, choices in CONFIG_CHOICES.items():
+        if conf.get(key) in choices:
+            out[key] = conf[key]
+    return out
+
+
+def save_config(conf):
+    full = mw.addonManager.getConfig(_addon_module()) or {}
+    full.update(conf)
+    mw.addonManager.writeConfig(_addon_module(), full)
 
 # ==========================================
 # PART 2: NOTE TYPE INSTALLER
@@ -53,6 +87,9 @@ def _load_card_templates():
         return source[start:end].strip()
 
     shared = extract("<!-- SHARED_JS_START -->", "<!-- SHARED_JS_END -->")
+    # The settings are baked into the templates, so cards render the same on phones and AnkiWeb.
+    # A flat dict of short strings: its JSON can never contain two curly braces in a row.
+    shared = shared.replace(CONFIG_TOKEN, json.dumps(get_config()))
     front = extract("<!-- FRONT_TEMPLATE_START -->", "<!-- FRONT_TEMPLATE_END -->").replace(SHARED_JS_TOKEN, shared)
     back = extract("<!-- BACK_TEMPLATE_START -->", "<!-- BACK_TEMPLATE_END -->").replace(SHARED_JS_TOKEN, shared)
     return front, back
@@ -102,7 +139,7 @@ _open_windows = []  # keeps references so the windows are not garbage collected
 
 # < > & are written as \\uXXXX escapes (still valid JSON): Anki's field editor treats the field as HTML and
 # would otherwise mangle the formatting tags stored inside the JSON.
-GET_DATA_JS = r"""(typeof syncHeights === 'function' && syncHeights(), JSON.stringify({nodes: ns, edges: es}).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026'))"""
+GET_DATA_JS = r"""(typeof syncHeights === 'function' && syncHeights(), JSON.stringify({title: (typeof mfTitle === 'string' ? mfTitle.trim() : ''), nodes: ns, edges: es}).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026'))"""
 
 
 def _encode_json(obj):
@@ -222,6 +259,8 @@ class FlowchartDialog(QDialog):
         self.btn_save = QPushButton("Save to note")
         self.btn_sync = QPushButton("Save and generate cards")
         self.btn_cancel = QPushButton("Close")
+        self.btn_settings = QPushButton("Settings")
+        self.btn_settings.clicked.connect(lambda: open_settings(self))
         self.btn_save.setShortcut(QKeySequence("Ctrl+S"))
         self.btn_save.clicked.connect(lambda: self._save(sync=False))
         self.btn_sync.clicked.connect(lambda: self._save(sync=True))
@@ -229,6 +268,7 @@ class FlowchartDialog(QDialog):
 
         bar = QHBoxLayout()
         bar.setContentsMargins(8, 6, 8, 6)
+        bar.addWidget(self.btn_settings)
         bar.addStretch(1)
         bar.addWidget(self.btn_cancel)
         bar.addWidget(self.btn_save)
@@ -255,15 +295,24 @@ class FlowchartDialog(QDialog):
             "var d = JSON.parse(%s);"
             "ns = Array.isArray(d.nodes) ? d.nodes : [];"
             "es = Array.isArray(d.edges) ? d.edges : [];"
+            "mfTitle = typeof d.title === 'string' ? d.title : '';"
+            "window.MF_CFG = %s;"
             "window.MEDFLOW_MEDIA_URL = %s;"
             "document.documentElement.setAttribute('data-theme', %s);"
-            "sel = null; render();"
+            "sel = null; applyToolbarLayout(); loadedChart(); render();"
             # the native buttons below replace the clipboard-based Save/Copy
             "var b = document.querySelector('#toolbar .save'); if (b) b.style.display = 'none';"
             "})();"
-        ) % (json.dumps(self.initial_json), json.dumps(media_url), json.dumps("dark" if self._dark else "light"))
+        ) % (json.dumps(self.initial_json), json.dumps(get_config()), json.dumps(media_url),
+             json.dumps("dark" if self._dark else "light"))
         self.web.page().runJavaScript(js)
         self.web.page().runJavaScript(GET_DATA_JS, self._remember_state)
+
+    def apply_config(self):
+        """Redraws the chart after the settings changed (arrow style, hint bubbles, extra markers)."""
+        self.web.page().runJavaScript(
+            "window.MF_CFG = %s; if (typeof applyToolbarLayout === 'function') applyToolbarLayout();"
+        " if (typeof render === 'function') render();" % json.dumps(get_config()))
 
     def _remember_state(self, state):
         self._loaded_state = state
@@ -328,13 +377,6 @@ def open_ext(editor):
 
 # ---- Card generation ----------------------------------------------------------
 
-def _cloze_of(node):
-    try:
-        return int(node.get("cloze", 0) or 0)
-    except (TypeError, ValueError):
-        return 0
-
-
 def sync_cards(editor):
     editor.saveNow(lambda: _sync_logic(editor))
 
@@ -353,39 +395,24 @@ def _sync_logic(editor):
     except Exception as e:
         showInfo(f"Invalid JSON in the Algorithm_JSON field: {e}")
         return
-
-    nodes = data_obj.get("nodes", []) if isinstance(data_obj, dict) else []
-    used = sorted({_cloze_of(n) for n in nodes if _cloze_of(n) > 0})
-    if not used:
-        showInfo("No clozes found. Give at least one box a cloze number in the editor.")
+    if not isinstance(data_obj, dict):
+        showInfo("The Algorithm_JSON field does not hold a flowchart.")
         return
 
-    notes_to_user = []
+    nodes = [n for n in (data_obj.get("nodes") or []) if isinstance(n, dict)]
+    data_obj["nodes"] = nodes
 
-    # Gaps in the numbering (c1, c3, c7...) are harmless for existing notes, because the review
-    # history of each card is tied to its number. For a brand new note nothing is tied yet,
-    # so the numbers are compacted to 1..N.
-    gaps = used != list(range(1, len(used) + 1))
-    is_new_note = not getattr(note, "id", 0)
-    if gaps and is_new_note:
-        mapping = {old: new for new, old in enumerate(used, start=1)}
-        for n in nodes:
-            if _cloze_of(n) > 0:
-                n["cloze"] = mapping[_cloze_of(n)]
-        note[json_field] = _encode_json(data_obj)
-        notes_to_user.append("cloze numbers were renumbered to 1-%d" % len(used))
-        used = sorted(mapping.values())
-    elif gaps:
-        notes_to_user.append("cloze numbers have gaps (%s); cards are only created for used numbers"
-                             % ", ".join("c%d" % c for c in used))
+    # Number every box and list item 1..N in reading order: rows top to bottom, left to right,
+    # each box followed by its own list.
+    mapping, total = numbering.renumber(nodes)
+    if not total:
+        showInfo("No clozes found. Give at least one box a cloze number, or add a list item, in the editor.")
+        return
 
-    # Cloze numbers that existed before but are no longer used leave empty cards behind.
-    removed = set()
-    if not is_new_note and text_field:
-        previous = {int(c) for c in re.findall(r"\{\{c(\d+)::", note[text_field] or "")}
-        removed = previous - set(used)
-
-    trigger_str = "".join(f"{{{{c{c}::CLOZEID_{c}}}}} " for c in used)
+    # The title goes first, so Anki's browser lists the note under it and searches find it.
+    title = str(data_obj.get("title") or "").strip()
+    trigger_str = f'<span class="mf-title">{html.escape(title)}</span> ' if title else ""
+    trigger_str += "".join(f"{{{{c{c}::CLOZEID_{c}}}}} " for c in range(1, total + 1))
 
     # Reference the extra images in a field so Anki's media check, exports and
     # shared decks keep them (hidden: they are only used by the back of the card).
@@ -397,19 +424,23 @@ def _sync_logic(editor):
     for f in images:
         trigger_str += f'<img src="{html.escape(f, quote=True)}" style="display:none"> '
 
+    if json_field:
+        note[json_field] = _encode_json(data_obj)
     if text_field:
         note[text_field] = trigger_str
+
+    # A note already in the collection: move each card to its box or item's new number, so its
+    # review history stays with it, then save the note (which also creates cards for new numbers).
+    leftovers = 0
+    if getattr(note, "id", 0):
+        leftovers = numbering.move_card_history(mw.col, note, mapping, total)
+        mw.col.update_note(note)
     editor.loadNote()
 
-    msg = f"Success! {len(used)} card(s) generated"
-    if notes_to_user:
-        msg += " (" + "; ".join(notes_to_user) + ")"
-    tooltip(msg + ".")
-
-    if removed:
-        showInfo("These cloze numbers are no longer used: %s.\n"
-                 "Their cards will now be empty. Remove them with Tools > Empty Cards."
-                 % ", ".join("c%d" % c for c in sorted(removed)))
+    tooltip(f"{total} card(s), numbered in reading order.")
+    if leftovers:
+        showInfo("%d card(s) no longer belong to any box or list item and are now empty.\n"
+                 "Remove them with Tools > Empty Cards." % leftovers)
 
 
 def add_btns(buttons, editor):
@@ -418,3 +449,95 @@ def add_btns(buttons, editor):
     return buttons
 
 addHook("setupEditorButtons", add_btns)
+
+
+# ---- Settings dialog ------------------------------------------------------------
+
+class SettingsDialog(QDialog):
+    ARROWS = [("straight", "Straight (right angles only)"), ("curved", "Curved")]
+    VIEWS = [("path", "Only the boxes leading to the asked box"), ("full", "The whole flowchart")]
+    LAYOUTS = [("float", "Float over the canvas (original layout)"),
+               ("scroll", "Scroll: one row in the top bar, scrolls sideways when narrow"),
+               ("wrap", "Wrap: in the top bar, adding rows when narrow")]
+
+    def __init__(self, parent=None):
+        super().__init__(parent or mw)
+        self.setWindowTitle("MedFlow settings")
+        conf = get_config()
+
+        self.arrows = QComboBox()
+        for key, label in self.ARROWS:
+            self.arrows.addItem(label, key)
+        self.arrows.setCurrentIndex([k for k, _ in self.ARROWS].index(conf["arrow_style"]))
+
+        self.view = QComboBox()
+        for key, label in self.VIEWS:
+            self.view.addItem(label, key)
+        self.view.setCurrentIndex([k for k, _ in self.VIEWS].index(conf["card_view"]))
+
+        self.layout_group = QButtonGroup(self)
+        self.layout_radios = {}
+        layout_col = QVBoxLayout()
+        layout_col.setSpacing(4)
+        for key, label in self.LAYOUTS:
+            rb = QRadioButton(label)
+            rb.setChecked(key == conf["toolbar_layout"])
+            self.layout_group.addButton(rb)
+            self.layout_radios[key] = rb
+            layout_col.addWidget(rb)
+
+        self.hint_bubbles = QCheckBox("Hint bubbles (top-left: shows the hint, click to edit it)")
+        self.hint_bubbles.setChecked(conf["hint_bubbles"])
+        self.extra_markers = QCheckBox("Extra markers (bottom-left: click to open the box's extra)")
+        self.extra_markers.setChecked(conf["extra_markers"])
+
+        form = QFormLayout()
+        form.addRow("Arrows:", self.arrows)
+        form.addRow("Review cards show:", self.view)
+        form.addRow("Format and zoom bars:", layout_col)
+        form.addRow("On boxes in the editor:", self.hint_bubbles)
+        form.addRow("", self.extra_markers)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addLayout(form)
+        layout.addWidget(buttons)
+
+    def accept(self):
+        save_config({"arrow_style": self.arrows.currentData(), "card_view": self.view.currentData(),
+                     "hint_bubbles": self.hint_bubbles.isChecked(), "extra_markers": self.extra_markers.isChecked(),
+                     "toolbar_layout": next((k for k, rb in self.layout_radios.items() if rb.isChecked()), "scroll")})
+        if mw.col:
+            install_model()  # the settings are baked into the card templates
+        for dlg in list(_open_windows):
+            try:
+                dlg.apply_config()
+            except Exception:
+                pass
+        tooltip("MedFlow settings saved.")
+        super().accept()
+
+
+def open_settings(parent=None):
+    SettingsDialog(parent).exec()
+
+
+def _setup_menu():
+    action = QAction("MedFlow settings…", mw)
+    action.triggered.connect(lambda: open_settings())
+    mw.form.menuTools.addAction(action)
+    mw.addonManager.setConfigAction(_addon_module(), lambda: open_settings())
+
+_setup_menu()
+
+
+# ---- One-screen list review --------------------------------------------------------
+
+try:
+    from . import list_review
+    list_review.install(MODEL_NAME, _clean_json)
+except Exception as _e:  # never stand between the user and their reviews
+    print(f"[MedFlow] List review is unavailable: {_e}")
