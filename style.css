@@ -46,3 +46,41 @@
 .flow-lines .elabel text{fill:#5b6785;font:600 12px Arial,sans-serif}
 .nightMode .flow-lines .elabel rect,.night_mode .flow-lines .elabel rect{fill:#222a3c;stroke:#36405a}
 .nightMode .flow-lines .elabel text,.night_mode .flow-lines .elabel text{fill:#c7cee0}
+
+/* Title, shown on every card of the flowchart */
+.flow-title{max-width:1000px;margin:4px auto 2px;font:700 20px/1.3 Arial,sans-serif;color:#20283a}
+.flow-inner{position:absolute;left:0;top:0}
+.node-vis.cloze-context{border-color:#6478e8;box-shadow:0 0 0 3px rgba(100,120,232,.14),0 4px 12px rgba(37,49,77,.08)}
+.node-vis.type-decision.cloze-context{--db:#6478e8;border:none;box-shadow:none}
+
+/* Elaboration lists ("+" items of a step or decision box) */
+.node-vis.type-box,.node-vis.type-decision{padding-bottom:18px}
+.elab-btn{position:absolute;right:4px;bottom:2px;height:14px;min-width:14px;padding:0 2px;display:flex;align-items:center;gap:4px;border:none;border-radius:4px;background:transparent;color:#111;font:10px/14px Arial,sans-serif;cursor:pointer;white-space:nowrap}
+.elab-btn:hover{background:rgba(0,0,0,.06)}
+.node-vis.type-decision .elab-btn{right:26px}
+.elab-btn .elab-tip{display:none;font-weight:700;color:#5b6785}
+.elab-btn:hover .elab-tip{display:inline}
+.elab-vis{position:absolute;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,.78);border:1.5px solid #9fb0f0;border-radius:11px;text-align:left;font:400 13px/1.45 Arial,sans-serif;color:#273149;box-shadow:0 4px 14px rgba(37,49,77,.08)}
+.elab-row{display:flex;gap:8px;align-items:flex-start;padding:3px 0}
+.elab-plus{flex:none;width:10px;color:#5268d8;font-weight:700}
+.elab-text{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.elab-row.elab-later{visibility:hidden}
+.elab-row.elab-asked{cursor:pointer;color:#805d16}
+.elab-row.elab-asked .elab-text{background:#fff3ce;border:1.5px dashed #d6a83e;border-radius:6px;padding:0 6px}
+.elab-row.elab-answer .elab-text{background:#eaf5ef;border-radius:6px;padding:0 6px;box-shadow:inset 3px 0 0 #6da98b}
+.mf-chip{flex:none;margin-left:4px;padding:0 6px;border-radius:9px;font-size:10px;line-height:16px;font-weight:700;color:#5b6785;background:#eef0f5}
+.mf-chip-1{color:#b4233c;background:#fde8ec}.mf-chip-2{color:#8a5a00;background:#fdf1d8}.mf-chip-3{color:#1d7a4f;background:#e3f4ea}.mf-chip-4{color:#2a55b5;background:#e5edfc}
+
+.nightMode .flow-title,.night_mode .flow-title{color:#e4e8f2}
+.nightMode .node-vis.cloze-context,.night_mode .node-vis.cloze-context{border-color:#7b8cf0;box-shadow:0 0 0 3px rgba(123,140,240,.2),0 4px 12px rgba(0,0,0,.35)}
+.nightMode .elab-btn,.night_mode .elab-btn{color:#e4e8f2}
+.nightMode .elab-btn:hover,.night_mode .elab-btn:hover{background:rgba(255,255,255,.1)}
+.nightMode .elab-btn .elab-tip,.night_mode .elab-btn .elab-tip{color:#a4aec6}
+.nightMode .elab-vis,.night_mode .elab-vis{background:rgba(34,42,60,.8);border-color:#5865a6;color:#e4e8f2;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.nightMode .elab-plus,.night_mode .elab-plus{color:#a9b6ff}
+.nightMode .elab-row.elab-asked,.night_mode .elab-row.elab-asked{color:#f0c864}
+.nightMode .elab-row.elab-asked .elab-text,.night_mode .elab-row.elab-asked .elab-text{background:#4a3c18}
+.nightMode .elab-row.elab-answer .elab-text,.night_mode .elab-row.elab-answer .elab-text{background:#1f3329;box-shadow:inset 3px 0 0 #4f9475}
+.nightMode .mf-chip,.night_mode .mf-chip{background:#2c3447;color:#c7cee0}
+.flow-lines>path{stroke-linejoin:round}
+.cloze-placeholder.cloze-hint{font-weight:700;letter-spacing:0;font-style:italic}
